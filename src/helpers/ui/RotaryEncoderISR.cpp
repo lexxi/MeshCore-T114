@@ -28,6 +28,10 @@ RotaryEncoderISR::RotaryEncoderISR(int8_t pin_clk, int8_t pin_dt, int8_t pin_sw,
 }
 
 void IRAM_ATTR RotaryEncoderISR::handleInterrupt() {
+#ifdef USE_THREE_BUTTON_NAV
+  // Three-button mode is polled in check(); no encoder ISR is used.
+  return;
+#else
   if (_instance == nullptr) return;
 
   // Debounce in ISR - ignore rapid pulses
@@ -49,9 +53,17 @@ void IRAM_ATTR RotaryEncoderISR::handleInterrupt() {
       _instance->_position++; // Clockwise
     }
   }
+#endif
 }
 
 void RotaryEncoderISR::begin() {
+#ifdef USE_THREE_BUTTON_NAV
+  // In this mode the three encoder pins are used as independent buttons:
+  // CLK = UP, DT = DOWN, SW = OK. Buttons connect the GPIO to GND.
+  if (_pin_clk >= 0) pinMode(_pin_clk, INPUT_PULLUP);
+  if (_pin_dt >= 0) pinMode(_pin_dt, INPUT_PULLUP);
+  if (_pin_sw >= 0) pinMode(_pin_sw, INPUT_PULLUP);
+#else
   if (_pin_clk >= 0) {
     pinMode(_pin_clk, INPUT_PULLUP);
     pinMode(_pin_dt, INPUT_PULLUP);
@@ -63,6 +75,7 @@ void RotaryEncoderISR::begin() {
   if (_pin_sw >= 0) {
     pinMode(_pin_sw, INPUT_PULLUP);
   }
+#endif
 }
 
 bool RotaryEncoderISR::isButtonPressed(int level) const {
@@ -85,6 +98,38 @@ void RotaryEncoderISR::cancelClick() {
 int RotaryEncoderISR::check() {
   int event = ENCODER_EVENT_NONE;
 
+#ifdef USE_THREE_BUTTON_NAV
+  // Use the encoder pins as three independent, active-low buttons.
+  // CLK/UP -> CCW (previous), DT/DOWN -> CW (next), SW/OK -> click.
+  static int prev_up = HIGH;
+  static int prev_down = HIGH;
+  static unsigned long last_up_change = 0;
+  static unsigned long last_down_change = 0;
+  const unsigned long now = millis();
+  const unsigned long debounce_ms = 30;
+
+  if (_pin_clk >= 0) {
+    int up = digitalRead(_pin_clk);
+    if (up != prev_up && (now - last_up_change) >= debounce_ms) {
+      prev_up = up;
+      last_up_change = now;
+      if (up == LOW) {
+        return ENCODER_EVENT_CCW;
+      }
+    }
+  }
+
+  if (_pin_dt >= 0) {
+    int down = digitalRead(_pin_dt);
+    if (down != prev_down && (now - last_down_change) >= debounce_ms) {
+      prev_down = down;
+      last_down_change = now;
+      if (down == LOW) {
+        return ENCODER_EVENT_CW;
+      }
+    }
+  }
+#else
   // Check for rotation
   if (_position != _last_position) {
     if (_position > _last_position) {
@@ -101,6 +146,7 @@ int RotaryEncoderISR::check() {
     _last_position = _position;
     return event; // Return immediately to avoid missing rapid rotations
   }
+#endif
 
   // Check button (same logic as before)
   if (_pin_sw >= 0) {
