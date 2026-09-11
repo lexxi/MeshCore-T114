@@ -1,128 +1,104 @@
-## About MeshCore
+# MeshCore T114 Pager
 
-MeshCore is a lightweight, portable C++ library that enables multi-hop packet routing for embedded projects using LoRa and other packet radios. It is designed for developers who want to create resilient, decentralized communication networks that work without the internet.
+A focused MeshCore firmware for the **Heltec Mesh Node T114** with display and three-button navigation.
 
-## 🔍 What is MeshCore?
+This repository is intentionally reduced to the parts needed for the T114 build used in this project. The goal is a small standalone MeshCore device that can be operated without a phone for quick/canned messages.
 
-MeshCore now supports a range of LoRa devices, allowing for easy flashing without the need to compile firmware manually. Users can flash a pre-built binary using tools like Adafruit ESPTool and interact with the network through a serial console.
-MeshCore provides the ability to create wireless mesh networks, similar to Meshtastic and Reticulum but with a focus on lightweight multi-hop packet routing for embedded projects. Unlike Meshtastic, which is tailored for casual LoRa communication, or Reticulum, which offers advanced networking, MeshCore balances simplicity with scalability, making it ideal for custom embedded solutions, where devices (nodes) can communicate over long distances by relaying messages through intermediate nodes. This is especially useful in off-grid, emergency, or tactical situations where traditional communication infrastructure is unavailable.
+## Features
 
-## ⚡ Key Features
+- Heltec Mesh Node T114 / nRF52840
+- SX1262 LoRa radio
+- ST7789 display
+- MeshCore Companion firmware over BLE
+- Canned / quick messages stored in LittleFS (`/canned.txt`)
+- Default canned-message list created on first boot
+- Three-button navigation
+- GPS support retained
+- EU/UK Narrow radio preset used by the project
 
-* Multi-Hop Packet Routing
-  * Devices can forward messages across multiple nodes, extending range beyond a single radio's reach.
-  * Supports up to a configurable number of hops to balance network efficiency and prevent excessive traffic.
-  * Nodes use fixed roles where "Companion" nodes are not repeating messages at all to prevent adverse routing paths from being used.
-* Supports LoRa Radios – Works with Heltec, RAK Wireless, and other LoRa-based hardware.
-* Decentralized & Resilient – No central server or internet required; the network is self-healing.
-* Low Power Consumption – Ideal for battery-powered or solar-powered devices.
-* Simple to Deploy – Pre-built example applications make it easy to get started.
+Current radio settings:
 
-## 🎯 What Can You Use MeshCore For?
-
-* Off-Grid Communication: Stay connected even in remote areas.
-* Emergency Response & Disaster Recovery: Set up instant networks where infrastructure is down.
-* Outdoor Activities: Hiking, camping, and adventure racing communication.
-* Tactical & Security Applications: Military, law enforcement, and private security use cases.
-* IoT & Sensor Networks: Collect data from remote sensors and relay it back to a central location.
-
-## 🚀 How to Get Started
-
-- Watch the [MeshCore QuickStart Playlist](https://www.youtube.com/watch?v=iaFltojJrAc&list=PLshzThxhw4O4WU_iZo3NmNZOv6KMrUuF9) by The Comms Channel
-- Watch the [MeshCore Technical Presentation](https://www.youtube.com/watch?v=OwmkVkZQTf4) by Liam Cottle.
-- Read through our [Frequently Asked Questions](./docs/faq.md) and [Documentation](https://docs.meshcore.io).
-- Flash the MeshCore firmware on a supported device.
-- Connect with a supported client.
-
-For developers:
-
-- Install [PlatformIO](https://docs.platformio.org) in [Visual Studio Code](https://code.visualstudio.com).
-- Clone and open the MeshCore repository in Visual Studio Code.
-- See the example applications you can modify and run:
-  - [Companion Radio](./examples/companion_radio) - For use with an external chat app, over BLE, USB or Wi-Fi.
-  - [KISS Modem](./examples/kiss_modem) - Serial KISS protocol bridge for host applications. ([protocol docs](./docs/kiss_modem_protocol.md))
-  - [Simple Repeater](./examples/simple_repeater) - Extends network coverage by relaying messages.
-  - [Simple Room Server](./examples/simple_room_server) - A simple BBS server for shared Posts.
-  - [Simple Secure Chat](./examples/simple_secure_chat) - Secure terminal based text communication between devices.
-  - [Simple Sensor](./examples/simple_sensor) - Remote sensor node with telemetry and alerting.
-
-The Simple Secure Chat example can be interacted with through the Serial Monitor in Visual Studio Code, or with a Serial USB Terminal on Android.
-
-## ⚡️ MeshCore Flasher
-
-We have prebuilt firmware ready to flash on supported devices.
-
-- Launch https://meshcore.io/flasher
-- Select a supported device
-- Flash one of the firmware types:
-  - Companion, Repeater or Room Server
-- Once flashing is complete, you can connect with one of the MeshCore clients below.
-
-## 📱 MeshCore Clients
-
-**Companion Firmware**
-
-The companion firmware can be connected to via BLE, USB or Wi-Fi depending on the firmware type you flashed.
-
-- Web: https://app.meshcore.nz
-- Android: https://play.google.com/store/apps/details?id=com.liamcottle.meshcore.android
-- iOS: https://apps.apple.com/us/app/meshcore/id6742354151?platform=iphone
-- NodeJS: https://github.com/liamcottle/meshcore.js
-- Python: https://github.com/fdlamotte/meshcore-cli
-
-**Repeater and Room Server Firmware**
-
-The repeater and room server firmware can be set up via USB in the web config tool.
-
-- https://config.meshcore.io
-
-They can also be managed via LoRa in the mobile app by using the Remote Management feature.
-
-## 🛠 Hardware Compatibility
-
-MeshCore is designed for devices listed in the [MeshCore Flasher](https://meshcore.io/flasher)
-
-## 📜 License
-
-MeshCore is open-source software released under the MIT License. You are free to use, modify, and distribute it for personal and commercial projects.
-
-## Contributing
-
-Please submit PR's using 'dev' as the base branch!
-For minor changes just submit your PR and we'll try to review it, but for anything more 'impactful' please open an Issue first and start a discussion. It is better to sound out what it is you want to achieve first, and try to come to a consensus on what the best approach is, especially when it impacts the structure or architecture of this codebase.
-
-Here are some general principles you should try to adhere to:
-* Keep it simple. Please, don't think like a high-level lang programmer. Think embedded, and keep code concise, without any unnecessary layers.
-* No dynamic memory allocation, except during setup/begin functions.
-* Use the same brace and indenting style that's in the core source modules. (A .clang-format is probably going to be added soon, but please do NOT retroactively re-format existing code. This just creates unnecessary diffs that make finding problems harder)
-
-Help us prioritize! Please react with thumbs-up to issues/PRs you care about most. We look at reaction counts when planning work.
-
-### Running unit tests
-
-To run unit tests, run the following command:
-
-```bash
-pio test --environment native --verbose
+```text
+Frequency: 869.618 MHz
+Bandwidth: 62.5 kHz
+Spreading Factor: SF8
+Coding Rate: 8
+TX power: 22 dBm
 ```
 
-## Road-Map / To-Do
+## Three-button controls
 
-There are a number of fairly major features in the pipeline, with no particular time-frames attached yet. In very rough chronological order:
-- [X] Companion radio: UI redesign
-- [X] Repeater + Room Server: add ACL's (like Sensor Node has)
-- [X] Standardise Bridge mode for repeaters
-- [ ] Repeater/Bridge: Standardise the Transport Codes for zoning/filtering
-- [X] Core + Repeater: enhanced zero-hop neighbour discovery
-- [ ] Core: round-trip manual path support
-- [ ] Companion + Apps: support for multiple sub-meshes (and 'off-grid' client repeat mode)
-- [ ] Core + Apps: support for LZW message compression
-- [ ] Core: dynamic CR (Coding Rate) for weak vs strong hops
-- [ ] Core: new framework for hosting multiple virtual nodes on one physical device
-- [ ] V2 protocol spec: discussion and consensus around V2 packet protocol, including path hashes, new encryption specs, etc
+The firmware uses three external buttons connected between the GPIO and GND. Internal pull-ups are enabled, so no external pull-up resistors are required.
 
-## 📞 Get Support
+```text
+UP    -> GPIO9
+DOWN  -> GPIO10
+OK    -> GPIO16
+GND   -> common ground
+```
 
-- Report bugs and request features on the [GitHub Issues](https://github.com/ripplebiz/MeshCore/issues) page.
-- Find additional guides and components on [my site](https://buymeacoffee.com/ripplebiz).
-- Join [MeshCore Discord](https://meshcore.gg) to chat with the developers and get help from the community.
+The buttons are used to navigate channels and canned messages and to confirm selections.
+
+## Default canned messages
+
+If `/canned.txt` does not exist on first boot, the firmware creates it with:
+
+```text
+Bin unterwegs
+Alles OK
+Bitte melden
+Komme spaeter
+Brauche Hilfe
+```
+
+The firmware currently supports up to 20 canned messages with up to 40 characters per message.
+
+## Build
+
+This project uses PlatformIO. The active environment is:
+
+```text
+Heltec_t114_companion_radio_ble_canned
+```
+
+On Windows with Python 3.13 and PlatformIO installed:
+
+```powershell
+py -3.13 -m platformio run `
+  -e Heltec_t114_companion_radio_ble_canned
+```
+
+Flash the connected T114 with:
+
+```powershell
+py -3.13 -m platformio run `
+  -e Heltec_t114_companion_radio_ble_canned `
+  -t upload
+```
+
+## Repository scope
+
+This is **not intended to replace the upstream MeshCore repository**. It is a specialized T114 fork kept deliberately small for this hardware project.
+
+The upstream project contains support for many additional boards, roles, build environments and features that have intentionally been removed here.
+
+## Upstream and acknowledgements
+
+This project is based on **MeshCore** and would not exist without the work of the MeshCore developers and community:
+
+- MeshCore upstream: https://github.com/meshcore-dev/MeshCore
+- MeshCore documentation: https://docs.meshcore.io
+
+The canned-message implementation used as the starting point for this T114 port comes from the `Bandit_canned_message` work by **gjelsoe**:
+
+- https://github.com/gjelsoe/MeshCore/tree/Bandit_canned_message
+
+Many thanks to the MeshCore developers, contributors and community, and especially to **gjelsoe** for the canned-message work that made this T114 adaptation possible.
+
+This repository contains T114-specific changes including nRF52 LittleFS support, T114 build fixes, default canned messages, and the three-button navigation used by this hardware build.
+
+## License
+
+This project remains under the same **MIT License** as MeshCore. See [`license.txt`](license.txt).
+
+Please also refer to the upstream MeshCore project for the original project history, contributors and documentation.
