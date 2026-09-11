@@ -44,8 +44,6 @@
   }
 #endif
 
-
-
 // ------------------------------------------------------------
 // Constructor
 // ------------------------------------------------------------
@@ -658,6 +656,45 @@ bool CannedMessagesScreen::handleInput(char c) {
       }
 
       // Update scroll
+      if (selected_message < scroll_offset) scroll_offset = selected_message;
+      if (selected_message >= scroll_offset + MESSAGES_PER_PAGE)
+        scroll_offset = selected_message - MESSAGES_PER_PAGE + 1;
+    }
+    return true;
+  }
+#endif
+
+#if defined(PIN_USER_BTN) && !defined(USE_ENCODER)
+  // T114 / single-button navigation: short click moves to the next item.
+  // On the confirmation screen a short click returns to message selection.
+  if (c == KEY_NEXT) {
+    if (confirm_send) {
+      confirm_send = false;
+      confirm_option = 0;
+    } else if (in_channel_selection) {
+      if (selected_channel == -1) {
+        selected_channel = 0;
+        while (selected_channel < MAX_GROUP_CHANNELS && !isValidChannel(selected_channel)) {
+          selected_channel++;
+        }
+      } else {
+        int next = selected_channel + 1;
+        bool found = false;
+        while (next < MAX_GROUP_CHANNELS) {
+          if (isValidChannel(next)) {
+            selected_channel = next;
+            found = true;
+            break;
+          }
+          next++;
+        }
+        if (!found) selected_channel = -1;
+      }
+    } else {
+      selected_message++;
+      if (selected_message > message_count) {
+        selected_message = 0;
+      }
       if (selected_message < scroll_offset) scroll_offset = selected_message;
       if (selected_message >= scroll_offset + MESSAGES_PER_PAGE)
         scroll_offset = selected_message - MESSAGES_PER_PAGE + 1;
