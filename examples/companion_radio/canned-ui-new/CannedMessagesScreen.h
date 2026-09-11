@@ -76,12 +76,12 @@ private:
   bool in_channel_selection;
   bool confirm_send;
 
-#if defined(PIN_USER_BTN) || defined(USE_ENCODER)
+  // Keep these declarations unconditional. Some board macros are provided
+  // only after this header is included on nRF52 targets.
   int confirm_option; // 0=Send, 1=Cancel, 2=Back
   int getValidChannelCount();
   int getTotalItems();
   bool isOnBackOption();
-#endif
 
   void countMessages();
   bool isValidChannel(int idx);
