@@ -99,7 +99,19 @@ void CannedMessagesScreen::loadFromFile() {
 
   File f = _canned_open_read(CANNED_FILE);
   if (!f) {
-    Serial.println("CannedMessages: /canned.txt not found");
+    Serial.println("CannedMessages: /canned.txt not found - creating defaults");
+
+    addMessage("Bin unterwegs");
+    addMessage("Alles OK");
+    addMessage("Bitte melden");
+    addMessage("Komme spaeter");
+    addMessage("Brauche Hilfe");
+
+    if (saveToFile()) {
+      Serial.println("CannedMessages: default messages created");
+    } else {
+      Serial.println("CannedMessages: failed to save defaults");
+    }
     return;
   }
 
