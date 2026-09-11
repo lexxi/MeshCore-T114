@@ -13,12 +13,30 @@
   #include <Adafruit_LittleFS.h>
   using namespace Adafruit_LittleFS_Namespace;
   static Adafruit_LittleFS& _canned_fs() { return InternalFS; }
+  static File _canned_open_read(const char *path) {
+    return _canned_fs().open(path, FILE_O_READ);
+  }
+  static File _canned_open_write(const char *path) {
+    return _canned_fs().open(path, FILE_O_WRITE | FILE_O_CREAT | FILE_O_TRUNC);
+  }
 #elif defined(RP2040_PLATFORM)
   #include <LittleFS.h>
   static fs::FS& _canned_fs() { return LittleFS; }
+  static File _canned_open_read(const char *path) {
+    return _canned_fs().open(path, "r");
+  }
+  static File _canned_open_write(const char *path) {
+    return _canned_fs().open(path, "w");
+  }
 #elif defined(ESP32)
   #include <SPIFFS.h>
   static fs::FS& _canned_fs() { return SPIFFS; }
+  static File _canned_open_read(const char *path) {
+    return _canned_fs().open(path, "r");
+  }
+  static File _canned_open_write(const char *path) {
+    return _canned_fs().open(path, "w");
+  }
 #endif
 
 
@@ -28,11 +46,7 @@
 // ------------------------------------------------------------
 CannedMessagesScreen::CannedMessagesScreen(UITask *task)
     : UIScreen(), _task(task), message_count(0), selected_channel(0), selected_message(0), scroll_offset(0),
-      in_channel_selection(true), confirm_send(false)
-#if defined(PIN_USER_BTN) || defined(USE_ENCODER)
-      ,
-      confirm_option(0)
-#endif
+      in_channel_selection(true), confirm_send(false), confirm_option(0)
 {
   for (int i = 0; i < MAX_MSG_COUNT; i++) {
     _msg_buf[i][0] = '\0';
@@ -78,7 +92,7 @@ void CannedMessagesScreen::loadFromFile() {
   }
   message_count = 0;
 
-  File f = _canned_fs().open(CANNED_FILE, "r");
+  File f = _canned_open_read(CANNED_FILE);
   if (!f) {
     Serial.println("CannedMessages: /canned.txt not found");
     return;
@@ -104,7 +118,7 @@ void CannedMessagesScreen::loadFromFile() {
 }
 
 bool CannedMessagesScreen::saveToFile() {
-  File f = _canned_fs().open(CANNED_FILE, "w");
+  File f = _canned_open_write(CANNED_FILE);
   if (!f) {
     Serial.println("CannedMessages: Failed to open /canned.txt for writing");
     return false;
