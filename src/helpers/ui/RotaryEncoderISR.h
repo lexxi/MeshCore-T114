@@ -5,6 +5,12 @@
 
 #include <Arduino.h>
 
+// IRAM_ATTR is an ESP32-specific attribute. On nRF52 it is not defined,
+// and three-button navigation does not use the encoder ISR anyway.
+#ifndef IRAM_ATTR
+#define IRAM_ATTR
+#endif
+
 #define ENCODER_EVENT_NONE       0
 #define ENCODER_EVENT_CW         1
 #define ENCODER_EVENT_CCW        2
