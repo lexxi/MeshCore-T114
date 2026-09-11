@@ -17,7 +17,12 @@
     return _canned_fs().open(path, FILE_O_READ);
   }
   static File _canned_open_write(const char *path) {
-    return _canned_fs().open(path, FILE_O_WRITE | FILE_O_CREAT | FILE_O_TRUNC);
+    File f = _canned_fs().open(path, FILE_O_WRITE);
+    if (f) {
+      f.truncate(0);
+      f.seek(0);
+    }
+    return f;
   }
 #elif defined(RP2040_PLATFORM)
   #include <LittleFS.h>
