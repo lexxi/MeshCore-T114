@@ -71,7 +71,81 @@ static uint32_t _atoi(const char* sp) {
     ArduinoSerialInterface serial_interface;
   #endif
 #elif defined(NRF52_PLATFORM)
-  #ifdef BLE_PIN_CODE
+  #if defined(BLE_PIN_CODE) && defined(USB_COMPANION)
+    #include <helpers/nrf52/SerialBLEInterface.h>
+    #include <helpers/ArduinoSerialInterface.h>
+
+    SerialBLEInterface ble_serial_interface;
+    ArduinoSerialInterface usb_serial_interface;
+
+    // Multiplex BLE and USB CDC into the single companion interface expected by MyMesh.
+    // Replies go back to the transport that most recently supplied a command.
+    // The UI's Bluetooth toggle only controls BLE; USB stays available while plugged in.
+    class DualCompanionInterface : public BaseSerialInterface {
+      BaseSerialInterface *_ble;
+      BaseSerialInterface *_usb;
+      enum Route : uint8_t { ROUTE_BLE, ROUTE_USB };
+      Route _last_route;
+
+    public:
+      DualCompanionInterface(BaseSerialInterface &ble, BaseSerialInterface &usb)
+          : _ble(&ble), _usb(&usb), _last_route(ROUTE_BLE) {}
+
+      void enable() override {
+        _ble->enable();
+        _usb->enable();
+      }
+
+      void disable() override {
+        // "Disable serial" in the display UI historically means Bluetooth off.
+        // Keep USB companion access alive for configuration/debug.
+        _ble->disable();
+      }
+
+      bool isEnabled() const override {
+        return _ble->isEnabled();
+      }
+
+      bool isConnected() const override {
+        // On nRF52 USB CDC, Serial evaluates true while a host has the port open.
+        return _ble->isConnected() || (bool)Serial;
+      }
+
+      bool isWriteBusy() const override {
+        return _last_route == ROUTE_USB ? _usb->isWriteBusy() : _ble->isWriteBusy();
+      }
+
+      size_t writeFrame(const uint8_t src[], size_t len) override {
+        if (_last_route == ROUTE_USB && (bool)Serial) {
+          return _usb->writeFrame(src, len);
+        }
+        if (_ble->isConnected()) {
+          return _ble->writeFrame(src, len);
+        }
+        if ((bool)Serial) {
+          return _usb->writeFrame(src, len);
+        }
+        return 0;
+      }
+
+      size_t checkRecvFrame(uint8_t dest[]) override {
+        size_t len = _usb->checkRecvFrame(dest);
+        if (len > 0) {
+          _last_route = ROUTE_USB;
+          return len;
+        }
+
+        len = _ble->checkRecvFrame(dest);
+        if (len > 0) {
+          _last_route = ROUTE_BLE;
+          return len;
+        }
+        return 0;
+      }
+    };
+
+    DualCompanionInterface serial_interface(ble_serial_interface, usb_serial_interface);
+  #elif defined(BLE_PIN_CODE)
     #include <helpers/nrf52/SerialBLEInterface.h>
     SerialBLEInterface serial_interface;
   #else
@@ -156,7 +230,10 @@ void setup() {
     #endif
   );
 
-#ifdef BLE_PIN_CODE
+#if defined(BLE_PIN_CODE) && defined(USB_COMPANION)
+  ble_serial_interface.begin(BLE_NAME_PREFIX, the_mesh.getNodePrefs()->node_name, the_mesh.getBLEPin());
+  usb_serial_interface.begin(Serial);
+#elif defined(BLE_PIN_CODE)
   serial_interface.begin(BLE_NAME_PREFIX, the_mesh.getNodePrefs()->node_name, the_mesh.getBLEPin());
 #else
   serial_interface.begin(Serial);
