@@ -126,6 +126,7 @@ class HomeScreen : public UIScreen {
 #if UI_SENSORS_PAGE == 1
     SENSORS,
 #endif
+    CHANNELS, // received MeshCore channel messages
 #ifdef USE_CANNED_MESSAGE
     CANNED, // Canned Messages
 #endif
@@ -434,6 +435,16 @@ public:
       else
         sensors_scroll_offset = 0;
 #endif
+    } else if (_page == HomePage::CHANNELS) {
+      display.setColor(DisplayDriver::GREEN);
+      display.setTextSize(1);
+      display.drawTextCentered(display.width() / 2, 22, "Channels");
+
+      display.setColor(DisplayDriver::YELLOW);
+      display.drawTextCentered(display.width() / 2, 38, "Last 20 messages");
+
+      display.setColor(DisplayDriver::BLUE);
+      display.drawTextCentered(display.width() / 2, 53, PRESS_LABEL);
 #ifdef USE_CANNED_MESSAGE
     } else if (_page == HomePage::CANNED) {
       display.setColor(DisplayDriver::GREEN);
@@ -519,6 +530,10 @@ public:
       return true;
     }
 #endif
+    if (c == KEY_ENTER && _page == HomePage::CHANNELS) {
+      _task->gotoChannelHistoryScreen();
+      return true;
+    }
 #ifdef USE_CANNED_MESSAGE
     if (c == KEY_ENTER && _page == HomePage::CANNED) {
       _task->gotoCannedMessagesScreen();
@@ -531,6 +546,103 @@ public:
 #endif
     if (c == KEY_ENTER && _page == HomePage::SHUTDOWN) {
       _shutdown_init = true; // need to wait for button to be released
+      return true;
+    }
+    return false;
+  }
+};
+
+
+class ChannelHistoryScreen : public UIScreen {
+  UITask *_task;
+  mesh::RTCClock *_rtc;
+
+  static constexpr int MAX_CHANNEL_HISTORY = 20;
+  struct Entry {
+    uint32_t timestamp;
+    char channel[32];
+    char msg[96];
+  };
+
+  Entry entries[MAX_CHANNEL_HISTORY];
+  int count;
+  int newest;
+  int selected_from_newest;
+
+  int indexForSelection() const {
+    if (count <= 0) return 0;
+    int idx = newest - selected_from_newest;
+    while (idx < 0) idx += MAX_CHANNEL_HISTORY;
+    return idx % MAX_CHANNEL_HISTORY;
+  }
+
+public:
+  ChannelHistoryScreen(UITask *task, mesh::RTCClock *rtc)
+      : _task(task), _rtc(rtc), count(0), newest(-1), selected_from_newest(0) {}
+
+  void add(const char *channel_name, const char *text) {
+    newest = (newest + 1) % MAX_CHANNEL_HISTORY;
+    if (count < MAX_CHANNEL_HISTORY) count++;
+    selected_from_newest = 0;
+
+    Entry *e = &entries[newest];
+    e->timestamp = _rtc->getCurrentTime();
+    StrHelper::strncpy(e->channel, channel_name ? channel_name : "Unknown", sizeof(e->channel));
+    StrHelper::strncpy(e->msg, text ? text : "", sizeof(e->msg));
+  }
+
+  int render(DisplayDriver &display) override {
+    display.setTextSize(1);
+
+    if (count == 0) {
+      display.setColor(DisplayDriver::GREEN);
+      display.drawTextCentered(display.width() / 2, 20, "Channels");
+      display.setColor(DisplayDriver::LIGHT);
+      display.drawTextCentered(display.width() / 2, 38, "No messages yet");
+      display.setColor(DisplayDriver::BLUE);
+      display.drawTextCentered(display.width() / 2, 53, "OK: back");
+      return 1000;
+    }
+
+    const Entry *e = &entries[indexForSelection()];
+    char tmp[32];
+    snprintf(tmp, sizeof(tmp), "%d/%d", selected_from_newest + 1, count);
+
+    display.setColor(DisplayDriver::GREEN);
+    char filtered_channel[sizeof(e->channel)];
+    display.translateUTF8ToBlocks(filtered_channel, e->channel, sizeof(filtered_channel));
+    display.drawTextEllipsized(0, 0, display.width() - 36, filtered_channel);
+    display.drawTextRightAlign(display.width() - 1, 0, tmp);
+    display.drawRect(0, 11, display.width(), 1);
+
+    int secs = _rtc->getCurrentTime() - e->timestamp;
+    if (secs < 60) snprintf(tmp, sizeof(tmp), "%ds ago", secs);
+    else if (secs < 3600) snprintf(tmp, sizeof(tmp), "%dm ago", secs / 60);
+    else snprintf(tmp, sizeof(tmp), "%dh ago", secs / 3600);
+
+    display.setColor(DisplayDriver::YELLOW);
+    display.drawTextLeftAlign(0, 14, tmp);
+
+    char filtered_msg[sizeof(e->msg)];
+    display.translateUTF8ToBlocks(filtered_msg, e->msg, sizeof(filtered_msg));
+    display.setColor(DisplayDriver::LIGHT);
+    display.setCursor(0, 26);
+    display.printWordWrap(filtered_msg, display.width());
+
+    return 1000;
+  }
+
+  bool handleInput(char c) override {
+    if (c == KEY_PREV || c == KEY_LEFT) {
+      if (count > 0 && selected_from_newest < count - 1) selected_from_newest++;
+      return true;
+    }
+    if (c == KEY_NEXT || c == KEY_RIGHT) {
+      if (selected_from_newest > 0) selected_from_newest--;
+      return true;
+    }
+    if (c == KEY_ENTER) {
+      _task->gotoHomeScreen();
       return true;
     }
     return false;
@@ -677,6 +789,7 @@ void UITask::begin(DisplayDriver *display, SensorManager *sensors, NodePrefs *no
   splash = new SplashScreen(this);
   home = new HomeScreen(this, &rtc_clock, sensors, node_prefs);
   msg_preview = new MsgPreviewScreen(this, &rtc_clock);
+  channel_history = new ChannelHistoryScreen(this, &rtc_clock);
 #ifdef USE_CANNED_MESSAGE
   canned_messages = new CannedMessagesScreen(this);
 #endif
@@ -744,6 +857,15 @@ void UITask::newMsg(uint8_t path_len, const char *from_name, const char *text, i
       _next_refresh = 100;                    // trigger refresh
     }
   }
+}
+
+
+void UITask::channelMsg(uint8_t path_len, const char *channel_name, const char *text, int msgcount) {
+  if (channel_history != NULL) {
+    ((ChannelHistoryScreen *)channel_history)->add(channel_name, text);
+  }
+  // Keep the existing immediate preview/notification behaviour.
+  newMsg(path_len, channel_name, text, msgcount);
 }
 
 void UITask::userLedHandler() {
