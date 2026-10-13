@@ -2,6 +2,8 @@
 
 A focused MeshCore firmware for the **Heltec Mesh Node T114** with display and three-button navigation.
 
+Current project firmware version: **v0.1.0**.
+
 This repository is intentionally reduced to the parts needed for the T114 build used in this project. The goal is a small standalone MeshCore device that can be operated without a phone for quick/canned messages.
 
 ## Features
@@ -10,9 +12,11 @@ This repository is intentionally reduced to the parts needed for the T114 build 
 - SX1262 LoRa radio
 - ST7789 display
 - MeshCore Companion firmware over BLE
+- USB CDC companion access in parallel with BLE
 - Canned / quick messages stored in LittleFS (`/canned.txt`)
 - Default canned-message list created on first boot
 - Three-button navigation
+- Standalone channel-message history on the display (last 20 messages, RAM in v0.1.0)
 - GPS support retained
 - EU/UK Narrow radio preset used by the project
 
@@ -37,7 +41,7 @@ OK    -> GPIO16
 GND   -> common ground
 ```
 
-The buttons are used to navigate channels and canned messages and to confirm selections.
+The buttons are used to navigate channels, the received-message history and canned messages, and to confirm selections.
 
 ## Default canned messages
 
@@ -75,6 +79,14 @@ py -3.13 -m platformio run `
   -e Heltec_t114_companion_radio_ble_canned `
   -t upload
 ```
+
+USB companion access after flashing:
+
+```powershell
+meshcore-cli -s COM4 -i
+```
+
+Replace `COM4` with the actual USB serial port. BLE remains available at the same time.
 
 ## Repository scope
 
