@@ -66,6 +66,7 @@
 #define CMD_SET_DEFAULT_FLOOD_SCOPE   63
 #define CMD_GET_DEFAULT_FLOOD_SCOPE   64
 #define CMD_SEND_RAW_PACKET           65
+#define CMD_CANNED                    66  // T114 Pager extension
 
 // Stats sub-types for CMD_GET_STATS
 #define STATS_TYPE_CORE               0
@@ -101,6 +102,7 @@
 #define RESP_ALLOWED_REPEAT_FREQ      26
 #define RESP_CODE_CHANNEL_DATA_RECV   27
 #define RESP_CODE_DEFAULT_FLOOD_SCOPE 28
+#define RESP_CODE_CANNED_INFO         29  // T114 Pager extension
 
 #define MAX_CHANNEL_DATA_LENGTH       (MAX_FRAME_SIZE - 9)
 
@@ -1990,6 +1992,77 @@ void MyMesh::handleCmdFrame(size_t len) {
     } else {
       writeErrFrame(ERR_CODE_TABLE_FULL);
     }
+#ifdef USE_CANNED_MESSAGE
+  } else if (cmd_frame[0] == CMD_CANNED && len >= 2) {
+    // T114 Pager private companion extension.
+    // subcmd 0=list/get, 1=add, 2=delete, 3=reload
+    CannedMessagesScreen *cs = nullptr;
+#ifdef DISPLAY_CLASS
+    if (_ui) cs = (CannedMessagesScreen *)((UITask *)_ui)->getCannedScreen();
+#endif
+    if (!cs) {
+      writeErrFrame(ERR_CODE_BAD_STATE);
+    } else {
+      uint8_t subcmd = cmd_frame[1];
+
+      if (subcmd == 0 && len >= 3) {
+        uint8_t idx = cmd_frame[2];
+        uint8_t count = (uint8_t)cs->getMessageCount();
+
+        if (count == 0 && idx == 0) {
+          out_frame[0] = RESP_CODE_CANNED_INFO;
+          out_frame[1] = 0;
+          out_frame[2] = 0;
+          _serial->writeFrame(out_frame, 3);
+        } else if (idx < count) {
+          const char *msg = cs->getMessage(idx);
+          int i = 0;
+          out_frame[i++] = RESP_CODE_CANNED_INFO;
+          out_frame[i++] = idx;
+          out_frame[i++] = count;
+          size_t msg_len = strlen(msg);
+          if (msg_len > sizeof(out_frame) - i - 1) msg_len = sizeof(out_frame) - i - 1;
+          memcpy(&out_frame[i], msg, msg_len);
+          i += msg_len;
+          out_frame[i++] = 0;
+          _serial->writeFrame(out_frame, i);
+        } else {
+          writeErrFrame(ERR_CODE_NOT_FOUND);
+        }
+
+      } else if (subcmd == 1 && len > 2) {
+        // Add one UTF-8/plain text message. Existing UI limit is 40 bytes/chars.
+        char msg[41];
+        size_t msg_len = len - 2;
+        if (msg_len > 40) {
+          writeErrFrame(ERR_CODE_ILLEGAL_ARG);
+        } else {
+          memcpy(msg, &cmd_frame[2], msg_len);
+          msg[msg_len] = 0;
+          if (cs->addMessage(msg) && cs->saveToFile()) {
+            writeOKFrame();
+          } else {
+            writeErrFrame(ERR_CODE_FILE_IO_ERROR);
+          }
+        }
+
+      } else if (subcmd == 2 && len >= 3) {
+        uint8_t idx = cmd_frame[2];
+        if (cs->deleteMessage(idx) && cs->saveToFile()) {
+          writeOKFrame();
+        } else {
+          writeErrFrame(ERR_CODE_NOT_FOUND);
+        }
+
+      } else if (subcmd == 3) {
+        cs->loadFromFile();
+        writeOKFrame();
+
+      } else {
+        writeErrFrame(ERR_CODE_ILLEGAL_ARG);
+      }
+    }
+#endif
   } else {
     writeErrFrame(ERR_CODE_UNSUPPORTED_CMD);
     MESH_DEBUG_PRINTLN("ERROR: unknown command: %02X", cmd_frame[0]);
