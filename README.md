@@ -102,6 +102,22 @@ py tools\canned_cli.py COM4 reload
 
 The list supports up to 20 messages, with up to 40 UTF-8 bytes per message. Changes are saved to LittleFS immediately.
 
+Canned messages can include live GPS placeholders which are expanded only when the message is sent:
+
+```text
+{GPS}  -> latitude,longitude
+{LAT}  -> latitude
+{LON}  -> longitude
+```
+
+Example:
+
+```text
+Brauche Hilfe, Position {GPS}
+```
+
+If a message contains a GPS placeholder but the T114 does not currently have a valid GPS fix, the send is cancelled and the display shows `No GPS fix`. Coordinates are formatted with six decimal places. The stored template still uses the normal 40-byte limit; the expanded outgoing message may be up to 120 bytes.
+
 ## Repository scope
 
 This is **not intended to replace the upstream MeshCore repository**. It is a specialized T114 fork kept deliberately small for this hardware project.
