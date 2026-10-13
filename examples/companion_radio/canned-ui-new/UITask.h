@@ -75,6 +75,7 @@ class UITask : public AbstractUITask {
   UIScreen *splash;
   UIScreen *home;
   UIScreen *msg_preview;
+  UIScreen *channel_history;
   UIScreen *curr;
 #ifdef USE_CANNED_MESSAGE
   UIScreen *canned_messages;
@@ -105,6 +106,7 @@ public:
   void begin(DisplayDriver *display, SensorManager *sensors, NodePrefs *node_prefs);
 
   void gotoHomeScreen() { setCurrScreen(home); }
+  void gotoChannelHistoryScreen() { setCurrScreen(channel_history); }
 #ifdef USE_CANNED_MESSAGE
   void gotoCannedMessagesScreen();
   UIScreen *getCannedScreen() { return canned_messages; }
@@ -124,6 +126,7 @@ public:
   // from AbstractUITask
   void msgRead(int msgcount) override;
   void newMsg(uint8_t path_len, const char *from_name, const char *text, int msgcount) override;
+  void channelMsg(uint8_t path_len, const char *channel_name, const char *text, int msgcount) override;
   void notify(UIEventType t = UIEventType::none) override;
   void loop() override;
 
