@@ -5,6 +5,9 @@
 
 #ifdef USE_CANNED_MESSAGE
 #include "canned-ui-new/CannedMessagesScreen.h"
+#ifdef DISPLAY_CLASS
+#include "canned-ui-new/UITask.h"
+#endif
 #endif
 
 #define CMD_APP_START                 1
