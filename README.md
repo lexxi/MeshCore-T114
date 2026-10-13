@@ -88,6 +88,20 @@ meshcore-cli -s COM4 -i
 
 Replace `COM4` with the actual USB serial port. BLE remains available at the same time.
 
+### Manage canned messages over USB
+
+The T114 Pager adds a small companion-protocol extension for maintaining `/canned.txt`.
+The helper client is included in this repository:
+
+```powershell
+py tools\canned_cli.py COM4 list
+py tools\canned_cli.py COM4 add "Bin in 10 Minuten da"
+py tools\canned_cli.py COM4 del 2
+py tools\canned_cli.py COM4 reload
+```
+
+The list supports up to 20 messages, with up to 40 UTF-8 bytes per message. Changes are saved to LittleFS immediately.
+
 ## Repository scope
 
 This is **not intended to replace the upstream MeshCore repository**. It is a specialized T114 fork kept deliberately small for this hardware project.
