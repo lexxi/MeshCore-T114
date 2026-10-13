@@ -3,6 +3,7 @@
 #include "../MyMesh.h"
 #include "../AbstractUITask.h"
 #include "UITask.h"
+#include "target.h"
 
 #include <Arduino.h>
 
@@ -764,11 +765,57 @@ void CannedMessagesScreen::poll() {
   if (_pending_send) {
     _pending_send = false;
 
+    const char *template_msg = messages[selected_message];
+    String expanded = template_msg ? String(template_msg) : String();
+
+#if ENV_INCLUDE_GPS == 1
+    const bool needs_gps =
+        expanded.indexOf("{GPS}") >= 0 ||
+        expanded.indexOf("{LAT}") >= 0 ||
+        expanded.indexOf("{LON}") >= 0;
+
+    if (needs_gps) {
+      LocationProvider *location = sensors.getLocationProvider();
+      if (!location || !location->isEnabled() || !location->isValid()) {
+        _task->showAlert("No GPS fix", 1500);
+        confirm_send = false;
+        return;
+      }
+
+      const double lat = ((double)location->getLatitude()) / 1000000.0;
+      const double lon = ((double)location->getLongitude()) / 1000000.0;
+
+      String lat_text(lat, 6);
+      String lon_text(lon, 6);
+      String gps_text = lat_text + "," + lon_text;
+
+      expanded.replace("{GPS}", gps_text);
+      expanded.replace("{LAT}", lat_text);
+      expanded.replace("{LON}", lon_text);
+    }
+#else
+    if (expanded.indexOf("{GPS}") >= 0 ||
+        expanded.indexOf("{LAT}") >= 0 ||
+        expanded.indexOf("{LON}") >= 0) {
+      _task->showAlert("GPS unavailable", 1500);
+      confirm_send = false;
+      return;
+    }
+#endif
+
+    // Leave room for MeshCore's text-message framing. Templates may be only
+    // 40 chars, but GPS expansion is allowed to produce a longer message.
+    if (expanded.length() == 0 || expanded.length() > 120) {
+      _task->showAlert("Message too long", 1500);
+      confirm_send = false;
+      return;
+    }
+
     ChannelDetails details;
     if (the_mesh.getChannel(selected_channel, details)) {
       auto now = the_mesh.getRTCClock()->getCurrentTime();
-      the_mesh.sendGroupMessage(now, details.channel, the_mesh.getNodeName(), messages[selected_message],
-                                strlen(messages[selected_message]));
+      the_mesh.sendGroupMessage(now, details.channel, the_mesh.getNodeName(), expanded.c_str(),
+                                expanded.length());
       _task->showAlert("Message sent!", 1000);
     }
     reset();
