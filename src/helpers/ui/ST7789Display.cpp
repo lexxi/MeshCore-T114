@@ -248,6 +248,22 @@ uint16_t ST7789Display::getTextWidth(const char* str) {
   return display.getStringWidth(text) / SCALE_X;
 }
 
+void ST7789Display::translateUTF8ToBlocks(char *dest, const char *src, size_t dest_size) {
+  // ST7789 uses the bundled Latin-1 indexed Arial font. Keep the original
+  // UTF-8 intact here; print()/getTextWidth() perform the single required
+  // UTF-8 -> Latin-1 conversion. The base implementation maps to CP437 and
+  // corrupts umlauts on this display path.
+  if (!dest || dest_size == 0) return;
+  if (!src) {
+    dest[0] = 0;
+    return;
+  }
+  size_t n = strlen(src);
+  if (n >= dest_size) n = dest_size - 1;
+  memcpy(dest, src, n);
+  dest[n] = 0;
+}
+
 void ST7789Display::endFrame() {
   display.display();
 }
