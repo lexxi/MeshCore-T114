@@ -41,6 +41,13 @@ static String utf8ToLatin1(const char *src) {
       continue;
     }
 
+    // Some MeshCore/UI paths already provide ISO-8859-1 bytes instead of UTF-8.
+    // Accept those directly as font indices as well.
+    if (ch >= 0xA0) {
+      out += (char)ch;
+      continue;
+    }
+
     // Unsupported Unicode code point: consume continuation bytes and render '?'.
     if ((ch & 0xE0) == 0xC0) {
       if ((*p & 0xC0) == 0x80) p++;
