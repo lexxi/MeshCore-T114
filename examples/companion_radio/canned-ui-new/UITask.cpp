@@ -619,17 +619,15 @@ public:
     display.setColor(DisplayDriver::YELLOW);
     display.drawTextLeftAlign(0, 14, tmp);
 
-    // Temporary encoding diagnostic: show bytes starting at the first
-    // non-ASCII byte, so UTF-8/Latin-1 message payloads are visible even when
-    // MeshCore prepends sender/name text.
+    // Temporary encoding diagnostic: show the final bytes of the raw message.
+    // The visible payload is at the end because MeshCore prepends sender text.
     char hexbuf[48];
     size_t hp = 0;
-    size_t start = 0;
-    while (e->msg[start] != 0 && (uint8_t)e->msg[start] < 0x80) start++;
-    if (e->msg[start] == 0) start = 0; // fallback for pure ASCII messages
-    for (size_t i = start; e->msg[i] != 0 && i < start + 8 && hp + 4 < sizeof(hexbuf); ++i) {
+    size_t msglen = strlen(e->msg);
+    size_t start = msglen > 8 ? msglen - 8 : 0;
+    for (size_t i = start; i < msglen && hp + 4 < sizeof(hexbuf); ++i) {
       hp += snprintf(hexbuf + hp, sizeof(hexbuf) - hp, "%02X%s",
-                     (uint8_t)e->msg[i], (e->msg[i + 1] != 0 && i < start + 7) ? " " : "");
+                     (uint8_t)e->msg[i], (i + 1 < msglen) ? " " : "");
     }
     hexbuf[sizeof(hexbuf) - 1] = 0;
     display.setColor(DisplayDriver::BLUE);
