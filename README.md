@@ -10,7 +10,7 @@ This repository is intentionally reduced to the parts needed for the T114 build 
 
 - Heltec Mesh Node T114 / nRF52840
 - SX1262 LoRa radio
-- ST7789 display
+- ST7789 display with UTF-8 support for German umlauts and Latin-1 characters
 - MeshCore Companion firmware over BLE
 - USB CDC companion access in parallel with BLE
 - Canned / quick messages stored in LittleFS (`/canned.txt`)
@@ -72,13 +72,30 @@ py -3.13 -m platformio run `
   -e Heltec_t114_companion_radio_ble_canned
 ```
 
-Flash the connected T114 with:
+For this T114 bootloader, the reliable update path is UF2 rather than a serial/nrfutil upload.
+
+Build the firmware first:
+
+```powershell
+py -3.13 -m platformio run `
+  -e Heltec_t114_companion_radio_ble_canned
+```
+
+Then generate the UF2 image:
 
 ```powershell
 py -3.13 -m platformio run `
   -e Heltec_t114_companion_radio_ble_canned `
-  -t upload
+  -t create_uf2
 ```
+
+The UF2 file is created here:
+
+```text
+.pio\build\Heltec_t114_companion_radio_ble_canned\firmware.uf2
+```
+
+When the T114 is in its UF2 bootloader, Windows exposes a removable drive named `HT-n5262`. Copy `firmware.uf2` to that drive. The bootloader may reboot the board as soon as the image has been accepted, so the drive can disappear immediately after or during the apparent end of the copy operation.
 
 USB companion access after flashing:
 
@@ -90,13 +107,57 @@ Replace `COM4` with the actual USB serial port. BLE remains available at the sam
 
 ### Enter the bootloader over USB
 
-After this firmware has been flashed once, the enclosure no longer needs to be opened for normal firmware updates. Reboot the running T114 into the nRF52840 UF2/DFU bootloader with:
+After this firmware has been flashed once, the enclosure no longer needs to be opened for normal firmware updates.
+
+Reboot the running T114 into the nRF52840 UF2/DFU bootloader with:
 
 ```powershell
 py tools\bootloader.py COM4
 ```
 
-Windows may assign a different COM port while the bootloader is active. After the board has entered DFU mode, run the normal PlatformIO upload command. The firmware uses the Adafruit nRF52 core's `enterUf2Dfu()` reset path.
+Replace `COM4` with the T114's current application COM port.
+
+The helper sends the T114-specific companion command and the firmware then calls the Adafruit nRF52 core's `enterUf2Dfu()` reset path. The application COM port disappears during the reset. In UF2 mode, Windows normally exposes the removable drive:
+
+```text
+HT-n5262
+```
+
+Then copy:
+
+```text
+.pio\build\Heltec_t114_companion_radio_ble_canned\firmware.uf2
+```
+
+to that drive.
+
+If the software bootloader entry is not yet available because an older firmware is installed, the hardware fallback is to enter the T114 bootloader manually. On the tested HT-n5262 bootloader, a successful UF2 bootloader reports:
+
+```text
+Model: HT-n5262
+Board-ID: HT-n5262
+SoftDevice: S140 6.1.1
+```
+
+The bootloader can also display `BLEOTA`; that mode by itself does not provide a normal application serial port.
+
+### UTF-8 and umlauts on the ST7789
+
+MeshCore messages arrive as UTF-8. The bundled Arial bitmap fonts on this firmware are indexed with single-byte Latin-1 code points, so the ST7789 path performs one explicit UTF-8 -> Latin-1 conversion before drawing.
+
+The ST7789 driver intentionally bypasses the generic `translateUTF8ToBlocks()` CP437 conversion used by other display paths. Without that override, German umlauts are corrupted before they reach the font renderer.
+
+The tested characters include:
+
+```text
+Ä Ö Ü ä ö ü ß
+```
+
+Example test string:
+
+```text
+ÄÖÜ äöü ß Grüße aus Kärnten
+```
 
 ### Manage canned messages over USB
 
@@ -147,7 +208,7 @@ The canned-message implementation used as the starting point for this T114 port 
 
 Many thanks to the MeshCore developers, contributors and community, and especially to **gjelsoe** for the canned-message work that made this T114 adaptation possible.
 
-This repository contains T114-specific changes including nRF52 LittleFS support, T114 build fixes, default canned messages, and the three-button navigation used by this hardware build.
+This repository contains T114-specific changes including nRF52 LittleFS support, T114 build fixes, default canned messages, three-button navigation, simultaneous BLE/USB companion access, software entry into the UF2 bootloader, and ST7789 UTF-8/umlaut handling used by this hardware build.
 
 ## License
 
