@@ -619,24 +619,10 @@ public:
     display.setColor(DisplayDriver::YELLOW);
     display.drawTextLeftAlign(0, 14, tmp);
 
-    // Temporary encoding diagnostic: show the final bytes of the raw message.
-    // The visible payload is at the end because MeshCore prepends sender text.
-    char hexbuf[48];
-    size_t hp = 0;
-    size_t msglen = strlen(e->msg);
-    size_t start = msglen > 8 ? msglen - 8 : 0;
-    for (size_t i = start; i < msglen && hp + 4 < sizeof(hexbuf); ++i) {
-      hp += snprintf(hexbuf + hp, sizeof(hexbuf) - hp, "%02X%s",
-                     (uint8_t)e->msg[i], (i + 1 < msglen) ? " " : "");
-    }
-    hexbuf[sizeof(hexbuf) - 1] = 0;
-    display.setColor(DisplayDriver::BLUE);
-    display.drawTextLeftAlign(0, 25, hexbuf);
-
     char filtered_msg[sizeof(e->msg)];
     display.translateUTF8ToBlocks(filtered_msg, e->msg, sizeof(filtered_msg));
     display.setColor(DisplayDriver::LIGHT);
-    display.setCursor(0, 38);
+    display.setCursor(0, 26);
     display.printWordWrap(filtered_msg, display.width());
 
     return 1000;
