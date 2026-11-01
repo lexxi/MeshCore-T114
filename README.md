@@ -88,6 +88,16 @@ meshcore-cli -s COM4 -i
 
 Replace `COM4` with the actual USB serial port. BLE remains available at the same time.
 
+### Enter the bootloader over USB
+
+After this firmware has been flashed once, the enclosure no longer needs to be opened for normal firmware updates. Reboot the running T114 into the nRF52840 UF2/DFU bootloader with:
+
+```powershell
+py tools\bootloader.py COM4
+```
+
+Windows may assign a different COM port while the bootloader is active. After the board has entered DFU mode, run the normal PlatformIO upload command. The firmware uses the Adafruit nRF52 core's `enterUf2Dfu()` reset path.
+
 ### Manage canned messages over USB
 
 The T114 Pager adds a small companion-protocol extension for maintaining `/canned.txt`.
