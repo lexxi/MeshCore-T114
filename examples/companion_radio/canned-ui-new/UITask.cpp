@@ -97,10 +97,7 @@ public:
     display.drawTextCentered(display.width() / 2, 30, T114_PAGER_VERSION);
 
     display.setTextSize(1);
-    // Temporary raw-font diagnostic: 0xFB should be û, 0xFC should be ü.
-    // These bytes bypass UTF-8 input so we can verify the font/renderer itself.
-    const char glyph_test[] = { 'F','B',':',(char)0xFB,' ','F','C',':',(char)0xFC,0 };
-    display.drawTextCentered(display.width() / 2, 52, glyph_test);
+    display.drawTextCentered(display.width() / 2, 52, FIRMWARE_BUILD_DATE);
 
     return 1000;
   }
