@@ -10,6 +10,51 @@
 #define Y_OFFSET 1  // Vertical offset to prevent top row cutoff
 #endif
 
+// T114 display path: MeshCore strings are UTF-8, while the bundled ArialMT
+// bitmap fonts are indexed by single-byte Latin-1 code points. Convert once
+// here and then use an identity lookup in OLEDDisplay so bytes >= 0x80 are not
+// interpreted as UTF-8 a second time.
+static char latin1FontLookup(const uint8_t ch) {
+  return (char)ch;
+}
+
+static String utf8ToLatin1(const char *src) {
+  String out;
+  if (!src) return out;
+
+  const uint8_t *p = (const uint8_t *)src;
+  while (*p) {
+    uint8_t ch = *p++;
+
+    if (ch < 0x80) {
+      out += (char)ch;
+      continue;
+    }
+
+    if (ch == 0xC2 && ((*p & 0xC0) == 0x80)) {
+      out += (char)(*p++);
+      continue;
+    }
+
+    if (ch == 0xC3 && ((*p & 0xC0) == 0x80)) {
+      out += (char)((uint8_t)(*p++) + 0x40);
+      continue;
+    }
+
+    // Unsupported Unicode code point: consume continuation bytes and render '?'.
+    if ((ch & 0xE0) == 0xC0) {
+      if ((*p & 0xC0) == 0x80) p++;
+    } else if ((ch & 0xF0) == 0xE0) {
+      for (int i = 0; i < 2 && (*p & 0xC0) == 0x80; ++i) p++;
+    } else if ((ch & 0xF8) == 0xF0) {
+      for (int i = 0; i < 3 && (*p & 0xC0) == 0x80; ++i) p++;
+    }
+    out += '?';
+  }
+
+  return out;
+}
+
 #ifdef HELTEC_VISION_MASTER_T190
   #define SCALE_X  2.5f        // 320 / 128
   #define SCALE_Y  2.65625f    // 170 / 64
@@ -31,6 +76,7 @@ bool ST7789Display::begin() {
     digitalWrite(PIN_TFT_RST, HIGH);
 
     display.init();
+    display.setFontTableLookupFunction(latin1FontLookup);
     display.landscapeScreen();
     display.displayOn();
     setCursor(0,0);
@@ -48,6 +94,7 @@ void ST7789Display::turnOn() {
     
     // Re-initialize the display
     display.init();
+    display.setFontTableLookupFunction(latin1FontLookup);
     display.displayOn();
     delay(20);
 
@@ -136,11 +183,13 @@ void ST7789Display::setCursor(int x, int y) {
 }
 
 void ST7789Display::print(const char* str) {
-  display.drawString(_x, _y, str);
+  String text = utf8ToLatin1(str);
+  display.drawString(_x, _y, text);
 }
 
 void ST7789Display::printWordWrap(const char* str, int max_width) {
-  display.drawStringMaxWidth(_x, _y, max_width*SCALE_X, str);
+  String text = utf8ToLatin1(str);
+  display.drawStringMaxWidth(_x, _y, max_width*SCALE_X, text);
 }
 
 void ST7789Display::fillRect(int x, int y, int w, int h) {
@@ -188,7 +237,8 @@ void ST7789Display::drawXbm(int x, int y, const uint8_t* bits, int w, int h) {
 }
 
 uint16_t ST7789Display::getTextWidth(const char* str) {
-  return display.getStringWidth(str) / SCALE_X;
+  String text = utf8ToLatin1(str);
+  return display.getStringWidth(text) / SCALE_X;
 }
 
 void ST7789Display::endFrame() {
