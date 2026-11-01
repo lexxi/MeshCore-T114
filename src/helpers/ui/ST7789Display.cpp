@@ -10,6 +10,47 @@
 #define Y_OFFSET 1  // Vertical offset to prevent top row cutoff
 #endif
 
+// The bundled ArialMT fonts use ISO-8859-1/Latin-1 code points while
+// MeshCore messages and canned.txt are UTF-8. Convert the Latin-1 subset
+// before rendering so German umlauts and other Western European characters
+// display correctly. Unsupported Unicode characters are replaced by '?'.
+static String utf8ToLatin1(const char *src) {
+  String out;
+  if (!src) return out;
+
+  const uint8_t *p = (const uint8_t *)src;
+  while (*p) {
+    uint8_t c = *p++;
+
+    if (c < 0x80) {
+      out += (char)c;
+      continue;
+    }
+
+    // UTF-8 U+0080..U+00FF:
+    // C2 80..BF -> 80..BF
+    // C3 80..BF -> C0..FF
+    if ((c == 0xC2 || c == 0xC3) && (*p & 0xC0) == 0x80) {
+      uint8_t trail = *p++;
+      uint8_t latin1 = (c == 0xC2) ? trail : (uint8_t)(trail + 0x40);
+      out += (char)latin1;
+      continue;
+    }
+
+    // Skip the remaining bytes of an unsupported UTF-8 sequence.
+    if ((c & 0xE0) == 0xC0) {
+      if ((*p & 0xC0) == 0x80) p++;
+    } else if ((c & 0xF0) == 0xE0) {
+      for (int i = 0; i < 2 && (*p & 0xC0) == 0x80; i++) p++;
+    } else if ((c & 0xF8) == 0xF0) {
+      for (int i = 0; i < 3 && (*p & 0xC0) == 0x80; i++) p++;
+    }
+    out += '?';
+  }
+
+  return out;
+}
+
 #ifdef HELTEC_VISION_MASTER_T190
   #define SCALE_X  2.5f        // 320 / 128
   #define SCALE_Y  2.65625f    // 170 / 64
@@ -136,11 +177,13 @@ void ST7789Display::setCursor(int x, int y) {
 }
 
 void ST7789Display::print(const char* str) {
-  display.drawString(_x, _y, str);
+  String text = utf8ToLatin1(str);
+  display.drawString(_x, _y, text.c_str());
 }
 
 void ST7789Display::printWordWrap(const char* str, int max_width) {
-  display.drawStringMaxWidth(_x, _y, max_width*SCALE_X, str);
+  String text = utf8ToLatin1(str);
+  display.drawStringMaxWidth(_x, _y, max_width*SCALE_X, text.c_str());
 }
 
 void ST7789Display::fillRect(int x, int y, int w, int h) {
@@ -188,7 +231,8 @@ void ST7789Display::drawXbm(int x, int y, const uint8_t* bits, int w, int h) {
 }
 
 uint16_t ST7789Display::getTextWidth(const char* str) {
-  return display.getStringWidth(str) / SCALE_X;
+  String text = utf8ToLatin1(str);
+  return display.getStringWidth(text.c_str()) / SCALE_X;
 }
 
 void ST7789Display::endFrame() {
