@@ -70,6 +70,7 @@
 #define CMD_GET_DEFAULT_FLOOD_SCOPE   64
 #define CMD_SEND_RAW_PACKET           65
 #define CMD_CANNED                    66  // T114 Pager extension
+#define CMD_ENTER_BOOTLOADER          67  // T114 Pager extension: reboot to UF2/DFU
 
 // Stats sub-types for CMD_GET_STATS
 #define STATS_TYPE_CORE               0
@@ -2065,6 +2066,16 @@ void MyMesh::handleCmdFrame(size_t len) {
         writeErrFrame(ERR_CODE_ILLEGAL_ARG);
       }
     }
+#endif
+  } else if (cmd_frame[0] == CMD_ENTER_BOOTLOADER) {
+#if defined(NRF52_PLATFORM)
+    // Acknowledge first, then use the Adafruit nRF52 core's supported
+    // GPREGRET-based reset path (UF2/DFU magic 0x57).
+    writeOKFrame();
+    delay(100);
+    enterUf2Dfu();  // does not return
+#else
+    writeErrFrame(ERR_CODE_UNSUPPORTED_CMD);
 #endif
   } else {
     writeErrFrame(ERR_CODE_UNSUPPORTED_CMD);
